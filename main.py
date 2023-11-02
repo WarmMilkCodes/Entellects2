@@ -246,8 +246,11 @@ class Entellect:
             pass
 
         # Check if near water with a margin
+        MAX_HYDRATION = 100
         if screen_height - 100 - MARGIN <= self.y <= screen_height - 85 + MARGIN:
             self.hydration += 15
+            if self.hydration > MAX_HYDRATION:
+                self.hydration = MAX_HYDRATION
 
 
         # RL Logic
