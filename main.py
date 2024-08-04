@@ -19,8 +19,8 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-DAY_COLOR = (100, 200, 100) # Green
-NIGHT_COLOR = (20, 40, 20) # Darker green
+DAY_COLOR = (100, 200, 100)  # Green
+NIGHT_COLOR = (20, 40, 20)  # Darker green
 
 
 def interpolate_color(color1, color2, factor):
@@ -32,6 +32,7 @@ def interpolate_color(color1, color2, factor):
     g = color1[1] + factor * (color2[1] - color1[1])
     b = color1[2] + factor * (color2[2] - color1[2])
     return int(r), int(g), int(b)
+
 
 def get_background_color(time_of_day, current_hour):
     if time_of_day == "morning" or time_of_day == "afternoon":
@@ -55,18 +56,17 @@ class Brain(nn.Module):
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        return self.fc3(x)   
+        return self.fc3(x)
 
 
 # Reinforcement Learning
 class QLearning:
-    def __init__(self, brain, learning_rate =0.01, discount_factor=0.99):
+    def __init__(self, brain, learning_rate=0.01, discount_factor=0.99):
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.memory = []
         self.brain = brain
         self.optimizer = optim.Adam(self.brain.parameters(), lr=0.001)
-        
 
     def remember(self, state, action, reward, next_state):
         self.memory.append((state, action, reward, next_state))
@@ -75,7 +75,7 @@ class QLearning:
         # using Bellman Equation
         target_q_value = reward + self.discount_factor * torch.max(self.brain(next_state))
         return target_q_value
-    
+
     def replay(self):
         for state, action, reward, next_state in self.memory:
             target_q_value = self.get_target_q_value(reward, next_state)
@@ -109,7 +109,7 @@ class TimeSystem:
             return "evening"
         else:
             return "night"
-        
+
     def get_season(self):
         # Return the current season: spring, summer, fall, winter
         day_of_year = (self.current_time // 24) % 365
@@ -121,7 +121,7 @@ class TimeSystem:
             return "fall"
         else:
             return "winter"
-        
+
 
 # Food class
 class Food:
@@ -137,6 +137,7 @@ class Food:
     def is_eaten_by(self, entellect):
         distance = math.sqrt((self.x - entellect.x) ** 2 + (self.y - entellect.y) ** 2)
         return distance <= (self.size + entellect.size)
+
 
 # Entellect class
 class Entellect:
@@ -156,16 +157,16 @@ class Entellect:
         return outputs
 
     def draw(self):
-        x_pos = int(self.x.item())
-        y_pos = int(self.y.item())
+        x_pos = int(self.x)
+        y_pos = int(self.y)
         pygame.draw.circle(screen, WHITE, (x_pos, y_pos), self.size)
-        
+
     def eat(self, food):
         self.energy += food.energy_value
         self.energy = min(self.energy, 100)
-    
+
     def get_state(self):
-       return torch.tensor([self.x / screen_width, self.y / screen_height, self.energy / 100.0]).float().unsqueeze(0)
+        return torch.tensor([self.x / screen_width, self.y / screen_height, self.energy / 100.0]).float().unsqueeze(0)
 
     def get_reward(self):
         reward = 0
@@ -184,21 +185,17 @@ class Entellect:
             if distance <= 30:
                 return True
         return False
-    
+
     def is_near_water(self):
         return screen_height - 100 <= self.y <= screen_height - 90
 
     def is_off_screen(self):
         return self.x < 0 or self.x > screen_width or self.y < 0 or self.y > screen_height
 
-
     def apply_action(self, action):
         dx, dy = action[0]
         self.x += dx
         self.y += dy
-        # Ensure the entellect remains within the screen boundaries
-        #self.x = max(min(self.x, screen_width - self.size), self.size)
-        #self.y = max(min(self.y, screen_height - self.size - 100), self.size)
 
     def update(self, delta_time):
         # Decrease energy over time
@@ -217,14 +214,14 @@ class Entellect:
             relative_x = 0
             relative_y = (screen_height - 100) - self.y
         else:
-            closest_food = min(foods, key=lambda food: (food.x - self.x)**2 + (food.y - self.y)**2)
+            closest_food = min(foods, key=lambda food: (food.x - self.x) ** 2 + (food.y - self.y) ** 2)
             relative_x = closest_food.x - self.x
-            relative_y = closest_food.y - self.y 
+            relative_y = closest_food.y - self.y
 
         # Feed the relative position to the neural network
         inputs = torch.tensor([self.x / screen_width, self.y / screen_height, self.energy / 100.0]).float().unsqueeze(0)
         outputs = self.brain(inputs)
-        
+
         # Use the outputs as velocity
         self.vx = outputs[0, 0].item() * 15
         self.vy = outputs[0, 1].item() * 15
@@ -235,11 +232,8 @@ class Entellect:
 
         # Constrain to screen boundaries
         MARGIN = 10
-
-        # Constrain to screen boundaries with a margin
-        self.x = max(min(self.x, screen_width + MARGIN), -MARGIN)
-        self.y = max(min(self.y, screen_height + MARGIN), -MARGIN)
-
+        self.x = max(min(self.x, screen_width - MARGIN), MARGIN)
+        self.y = max(min(self.y, screen_height - MARGIN), MARGIN)
 
         if self.energy == 0:
             # Entellect dies
@@ -251,7 +245,6 @@ class Entellect:
             self.hydration += 15
             if self.hydration > MAX_HYDRATION:
                 self.hydration = MAX_HYDRATION
-
 
         # RL Logic
         state = self.get_state()
@@ -272,12 +265,13 @@ class Entellect:
         distance = math.sqrt((self.x - mouse_pos[0]) ** 2 + (self.y - mouse_pos[1]) ** 2)
         return distance <= self.size
 
+
 # Generate initial food sources
 foods = [Food(random.randint(0, screen_width), random.randint(0, screen_height - 100)) for _ in range(10)]
 
-# Create an Entellect
-entellects = [Entellect(screen_width//2, screen_height//2),
-              Entellect(screen_width//3, screen_height//3)]
+# Create Entellects
+entellects = [Entellect(screen_width // 2, screen_height // 2),
+              Entellect(screen_width // 3, screen_height // 3)]
 
 running = True
 clock = pygame.time.Clock()
@@ -324,12 +318,12 @@ while running:
 
     # Draw Entellects
     for ent in entellects:
-        x_pos = int(ent.x.item())
-        y_pos = int(ent.y.item())
         ent.draw()
 
         # Check for hover
         if ent.is_hovered(pygame.mouse.get_pos()):
+            x_pos = int(ent.x)
+            y_pos = int(ent.y)
             # Render the vitals
             energy_text = font.render(f"Energy: {ent.energy:.2f}", True, (WHITE))
             hydration_text = font.render(f"Hydration: {ent.hydration:.2f}", True, (WHITE))
@@ -345,6 +339,5 @@ while running:
 
     pygame.display.flip()
     clock.tick(60)  # Cap the frame rate at 60 FPS
-
 
 pygame.quit()
