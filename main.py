@@ -150,6 +150,33 @@ class Entellect:
         self.brain = Brain()
         self.brain_optimizer = torch.optim.Adam(self.brain.parameters(), lr=0.001)
         self.q_learning = QLearning(self.brain)
+        self.reproduction_cooldown = 0
+        self.reproduction_cooldown_duration = 30
+
+    def can_reproduce(self):
+        # Entellects can reproduce if energy and hydration above 80%
+        return self.energy > 80 and return self.hydration > 80 and self.reproduction_cooldown <= 0
+
+    def reproduce(self):
+        # Reduce energy and hydration at the cost of reproduction
+        reproduction_energy_cost = 30
+        reproduction_hydration_cost = 20
+        self.energy -= reproduction_energy_cost
+        self.hydration -= reproduction_hydration_cost
+
+        # Reset reproduction cooldown
+        self.reproduction_cooldown = self.reproduction_cooldown_duration
+
+        # Create a mutated copy of the brain
+        child_brain = self.mutate_brain()
+
+        # Create a new Entellect (offspring)
+        child = Entellect(
+            x=self.x + random.uniform(-20, 20),  # Slightly offset position
+            y=self.y + random.uniform(-20, 20),
+            brain=child_brain
+        )
+        entellects.append(child)  # Add offspring to the simulation
 
     def choose_action(self):
         inputs = self.get_state()
@@ -197,11 +224,37 @@ class Entellect:
         self.x += dx
         self.y += dy
 
+        def mutate_brain(self):
+        # Create a deep copy of the brain
+        child_brain = Brain()
+        child_brain.load_state_dict(self.brain.state_dict())
+
+        # Apply mutations to the brain's weights and biases
+        mutation_rate = 0.05  # Percentage of weights to mutate
+        mutation_strength = 0.1  # Strength of the mutation
+
+        for param in child_brain.parameters():
+            # Apply mutation to a subset of parameters
+            if len(param.shape) == 2:  # Weights
+                for i in range(param.shape[0]):
+                    for j in range(param.shape[1]):
+                        if random.random() < mutation_rate:
+                            param.data[i][j] += torch.randn(1).item() * mutation_strength
+            else:  # Biases
+                for i in range(param.shape[0]):
+                    if random.random() < mutation_rate:
+                        param.data[i] += torch.randn(1).item() * mutation_strength
+
+        return child_brain
+
     def update(self, delta_time):
         # Decrease energy over time
         energy_depletion_rate = 0.02315
         self.energy -= energy_depletion_rate * delta_time
         self.energy = max(self.energy, 0)
+        self.reproduction_cooldown -= delta_time
+        if self.reproduction_cooldown < 0:
+            self.reproduction_cooldown = 0
 
         # Decrease hydration over time
         hydration_depletion_rate = 0.05
@@ -230,14 +283,19 @@ class Entellect:
         self.x += self.vx * delta_time
         self.y += self.vy * delta_time
 
+        # Check if the Entellect can reproduce
+        if self.can_reproduce():
+            self.reproduce()
+
         # Constrain to screen boundaries
         MARGIN = 10
         self.x = max(min(self.x, screen_width - MARGIN), MARGIN)
         self.y = max(min(self.y, screen_height - MARGIN), MARGIN)
 
-        if self.energy == 0:
+        if self.energy <= 0 or self.hydration <=0:
             # Entellect dies
-            pass
+            entellects.remove(self)
+            return
 
         # Check if near water with a margin
         MAX_HYDRATION = 100
